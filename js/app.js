@@ -90,8 +90,14 @@ var ViewModel = function() {
     this.query = ko.observable("");
 
     //toggle the appropriate marker when the user click on the li
-    this.vmBounce = function(marker) {
+    this.vmBounce = function(name, marker) {
       toggleBounce(this.marker);
+      map.setCenter(this.marker.getPosition());
+      map.panBy(0, -200);
+      yelp_api(this.name, this.marker);
+      infowindow.close();
+      console.log(this.marker.getPosition());
+      infowindow.open(map, this.marker);   
     }
 
     //show markers and list items based on the input box.
@@ -123,8 +129,12 @@ function toggleBounce(marker) {
   else {
     marker.setAnimation(google.maps.Animation.BOUNCE);
     }
+  for (i = 0; i < bars.length; i++) {  
+    if (marker !== bars[i].marker) {
+      bars[i].marker.setAnimation(null);
+    }
   }
-
+}
 var map;
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
@@ -161,14 +171,16 @@ function initMap() {
             return function() {
                 yelp_api(bars[i].name, bars[i].marker);
                 infowindow.close();
-                map.setCenter(bars[i].marker.getPosition());
                 console.log(bars[i].marker.getPosition());
+                map.setCenter(bars[i].marker.getPosition());    
+                map.panBy(0, -200);
                 infowindow.open(map, bars[i].marker);
             }
         }(i));  
 
 
     }
+
 }
 
  
