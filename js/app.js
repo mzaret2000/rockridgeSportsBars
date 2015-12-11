@@ -1,4 +1,7 @@
 //create model
+var map,
+    infowindow,
+    bounds;
 
 var bars = [
     {
@@ -41,10 +44,10 @@ function yelp_api(biz, marker){
     
     var yelp_url = "https://api.yelp.com/v2/search";
 
-    YELP_KEY = "0N-K-n12E2nqVE8ROFiHPQ"
-    YELP_TOKEN = "CE-KH7BjJeVBkNyM-isXEcnH6xRPnIh8"
-    YELP_KEY_SECRET = "t7SlBR7jha2TWhU64GPehMoAftE"
-    YELP_TOKEN_SECRET = "YXo_6LJxguAbPspjG507yTWRZPs"
+    var   YELP_KEY = "0N-K-n12E2nqVE8ROFiHPQ",
+          YELP_TOKEN = "CE-KH7BjJeVBkNyM-isXEcnH6xRPnIh8",
+          YELP_KEY_SECRET = "t7SlBR7jha2TWhU64GPehMoAftE",
+          YELP_TOKEN_SECRET = "YXo_6LJxguAbPspjG507yTWRZPs";
 
         var parameters = {
           oauth_consumer_key: YELP_KEY,
@@ -75,8 +78,11 @@ function yelp_api(biz, marker){
             //console.log(results);
           },
           fail: function() {
-            infowindow.setContent("Something went wrong with Yelp API. Please try again.")
+            infowindow.setContent("Something went wrong with Yelp API. Please try again.");
             // Do stuff on fail
+          },
+          error: function() {
+            infowindow.setContent("Something went wrong with Yelp API.  Please try again.");
           }
         };
 
@@ -90,15 +96,9 @@ var ViewModel = function() {
     this.query = ko.observable("");
 
     //toggle the appropriate marker when the user click on the li
-    this.vmBounce = function(name, marker) {
-      toggleBounce(this.marker);
-      map.setCenter(this.marker.getPosition());
-      map.panBy(0, -200);
-      yelp_api(this.name, this.marker);
-      infowindow.close();
-      console.log(this.marker.getPosition());
-      infowindow.open(map, this.marker);   
-    }
+    this.vmBounce = function(clickedLocation) {
+      google.maps.event.trigger(clickedLocation.marker, 'click'); 
+    };
 
     //show markers and list items based on the input box.
     this.barList = ko.computed(function() {
@@ -106,10 +106,10 @@ var ViewModel = function() {
         return ko.utils.arrayFilter(bars, function(bar) {
           if (bar.name.toLowerCase().indexOf(search) >=0) {
             if(bar.marker)
-              bar.marker.setMap(map); 
+              bar.marker.setVisible(true); 
           } else {
             if(bar.marker)
-              bar.marker.setMap(null);
+              bar.marker.setVisible(false);
           }               
             return bar.name.toLowerCase().indexOf(search) >= 0;
         });
@@ -118,38 +118,35 @@ var ViewModel = function() {
 
 
 
-}
+};
 
-ko.applyBindings(new ViewModel())
+ko.applyBindings(new ViewModel());
 
 function toggleBounce(marker) {
-  if (marker.getAnimation() !== null) {
+  marker.setAnimation(google.maps.Animation.BOUNCE);
+
+  // stop the bounce animation after 2100 miliseconds (or approx 3 bounces)
+  window.setTimeout(function() {
     marker.setAnimation(null);
-    } 
-  else {
-    marker.setAnimation(google.maps.Animation.BOUNCE);
-    }
+  }, 2100);
+
+  // stop all other markers from bouncing whenever a new marker is clicked
   for (i = 0; i < bars.length; i++) {  
     if (marker !== bars[i].marker) {
       bars[i].marker.setAnimation(null);
     }
   }
 }
-var map;
+
 function initMap() {
+    bounds = new google.maps.LatLngBounds();  
     map = new google.maps.Map(document.getElementById('map'), {
     center: bars[0].position,
     zoom: 14
     });
 
-    if (!map) {
-      alert("Currently Google Maps is not available. Please try again later!");
-      return;
-    } 
     
     var marker, i;
-
-    markers = [];
 
     //create a marker with an infowindow for each bar in the model.
     for (i = 0; i < bars.length; i++) {  
@@ -158,6 +155,8 @@ function initMap() {
             map: map,
             animation: google.maps.Animation.DROP
         });
+
+        bounds.extend(marker.position);
 
         infowindow = new google.maps.InfoWindow({
             content: "",
@@ -175,12 +174,13 @@ function initMap() {
                 map.setCenter(bars[i].marker.getPosition());    
                 map.panBy(0, -200);
                 infowindow.open(map, bars[i].marker);
-            }
+                toggleBounce(bars[i].marker);
+            };
         }(i));  
 
 
     }
-
+    map.fitBounds(bounds);
 }
 
  
